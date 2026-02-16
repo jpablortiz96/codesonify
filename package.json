@@ -1,0 +1,35 @@
+{
+  "name": "codesonify",
+  "version": "1.0.0",
+  "description": "Transform source code into music - hear the rhythm of your code",
+  "type": "module",
+  "main": "dist/web/server.js",
+  "scripts": {
+    "start": "tsx src/web/server.ts",
+    "mcp": "tsx src/mcp/index.ts",
+    "build": "tsc",
+    "dev": "tsx watch src/web/server.ts"
+  },
+  "keywords": [
+    "code",
+    "music",
+    "sonification",
+    "mcp",
+    "copilot",
+    "github-copilot"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "@types/node": "^22.15.21",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.18",
+    "@types/express": "^5.0.2"
+  }
+}

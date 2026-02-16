@@ -1,0 +1,1145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CodeSonify — Hear Your Code</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+  <style>
+    /* ============================================
+       CodeSonify — Visual Design System
+       ============================================ */
+    
+    :root {
+      --bg-primary: #0a0e1a;
+      --bg-secondary: #111827;
+      --bg-card: #1a1f35;
+      --bg-code: #0d1117;
+      --accent-blue: #3b82f6;
+      --accent-purple: #8b5cf6;
+      --accent-cyan: #06b6d4;
+      --accent-pink: #ec4899;
+      --accent-green: #10b981;
+      --accent-orange: #f59e0b;
+      --accent-red: #ef4444;
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --border: #1e293b;
+      --glow-blue: rgba(59, 130, 246, 0.3);
+      --glow-purple: rgba(139, 92, 246, 0.3);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* --- Animated Background --- */
+    .bg-animation {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
+    .bg-animation .orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.15;
+      animation: float 20s infinite ease-in-out;
+    }
+    .bg-animation .orb:nth-child(1) {
+      width: 500px; height: 500px;
+      background: var(--accent-blue);
+      top: -100px; left: -100px;
+    }
+    .bg-animation .orb:nth-child(2) {
+      width: 400px; height: 400px;
+      background: var(--accent-purple);
+      bottom: -100px; right: -100px;
+      animation-delay: -7s;
+    }
+    .bg-animation .orb:nth-child(3) {
+      width: 300px; height: 300px;
+      background: var(--accent-cyan);
+      top: 50%; left: 50%;
+      animation-delay: -14s;
+    }
+    @keyframes float {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      33% { transform: translate(100px, -50px) scale(1.1); }
+      66% { transform: translate(-50px, 80px) scale(0.9); }
+    }
+
+    /* --- Main Layout --- */
+    .app-container {
+      position: relative;
+      z-index: 1;
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    /* --- Header --- */
+    .header {
+      text-align: center;
+      padding: 40px 0 30px;
+    }
+    .header h1 {
+      font-size: 3.2rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple), var(--accent-pink));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 8px;
+      letter-spacing: -1px;
+    }
+    .header .tagline {
+      font-size: 1.2rem;
+      color: var(--text-secondary);
+      font-weight: 300;
+    }
+    .header .badge {
+      display: inline-block;
+      margin-top: 12px;
+      padding: 4px 14px;
+      background: rgba(59, 130, 246, 0.15);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      border-radius: 20px;
+      font-size: 0.8rem;
+      color: var(--accent-blue);
+    }
+
+    /* --- Main Grid --- */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+    @media (max-width: 900px) {
+      .main-grid { grid-template-columns: 1fr; }
+    }
+
+    /* --- Cards --- */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .card-header h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card-body { padding: 20px; }
+
+    /* --- Code Editor --- */
+    .code-editor {
+      width: 100%;
+      min-height: 350px;
+      background: var(--bg-code);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+      font-size: 13px;
+      color: var(--text-primary);
+      resize: vertical;
+      line-height: 1.6;
+      tab-size: 2;
+      outline: none;
+      transition: border-color 0.3s;
+    }
+    .code-editor:focus {
+      border-color: var(--accent-blue);
+      box-shadow: 0 0 0 3px var(--glow-blue);
+    }
+
+    /* --- Controls --- */
+    .controls {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-top: 16px;
+    }
+    .select-styled {
+      padding: 10px 16px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text-primary);
+      font-size: 0.9rem;
+      cursor: pointer;
+      outline: none;
+    }
+    .select-styled:focus {
+      border-color: var(--accent-purple);
+    }
+
+    .btn {
+      padding: 12px 28px;
+      border: none;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+      color: white;
+      box-shadow: 0 4px 15px var(--glow-blue);
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 25px var(--glow-purple);
+    }
+    .btn-primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+    .btn-secondary {
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover {
+      background: var(--bg-card);
+    }
+    .btn-stop {
+      background: linear-gradient(135deg, var(--accent-red), var(--accent-pink));
+      color: white;
+    }
+    .btn-example {
+      padding: 8px 14px;
+      font-size: 0.8rem;
+      background: rgba(139, 92, 246, 0.1);
+      border: 1px solid rgba(139, 92, 246, 0.3);
+      border-radius: 8px;
+      color: var(--accent-purple);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-example:hover {
+      background: rgba(139, 92, 246, 0.2);
+    }
+
+    /* --- Visualizer --- */
+    .visualizer-container {
+      position: relative;
+      height: 200px;
+      background: var(--bg-code);
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+    #visualizer {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* --- Stats --- */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 16px;
+    }
+    .stat-card {
+      background: var(--bg-secondary);
+      border-radius: 10px;
+      padding: 14px;
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .stat-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    /* --- Tracks --- */
+    .tracks-list { margin-top: 16px; }
+    .track-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      background: var(--bg-secondary);
+      border-radius: 8px;
+      margin-bottom: 8px;
+      transition: background 0.2s;
+    }
+    .track-item:hover { background: rgba(59, 130, 246, 0.1); }
+    .track-icon { font-size: 1.3rem; }
+    .track-name { flex: 1; font-size: 0.85rem; }
+    .track-notes {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      background: var(--bg-primary);
+      padding: 3px 10px;
+      border-radius: 12px;
+    }
+    .track-bar {
+      width: 80px;
+      height: 6px;
+      background: var(--bg-primary);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .track-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.5s ease;
+    }
+
+    /* --- Code Highlight Panel --- */
+    .code-highlight {
+      margin-top: 16px;
+      max-height: 200px;
+      overflow-y: auto;
+      background: var(--bg-code);
+      border-radius: 10px;
+      padding: 12px;
+      font-family: 'Cascadia Code', 'Fira Code', monospace;
+      font-size: 12px;
+      line-height: 1.8;
+      border: 1px solid var(--border);
+    }
+    .code-line { display: flex; gap: 12px; }
+    .line-num {
+      color: var(--text-muted);
+      min-width: 30px;
+      text-align: right;
+      user-select: none;
+    }
+    .token-function { color: #4FC3F7; }
+    .token-loop { color: #FFB74D; }
+    .token-conditional { color: #81C784; }
+    .token-variable { color: #CE93D8; }
+    .token-string { color: #A5D6A7; }
+    .token-number { color: #FFD54F; }
+    .token-comment { color: #78909C; font-style: italic; }
+    .token-class { color: #F06292; }
+    .token-import { color: #4DD0E1; }
+    .token-operator { color: #90A4AE; }
+    .token-keyword { color: #BA68C8; }
+    .token-return { color: #EF5350; }
+
+    /* --- Interpretation --- */
+    .interpretation {
+      margin-top: 16px;
+      padding: 16px;
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(139, 92, 246, 0.1));
+      border: 1px solid rgba(99, 102, 241, 0.2);
+      border-radius: 10px;
+      font-size: 0.9rem;
+      line-height: 1.6;
+      color: var(--text-secondary);
+    }
+    .interpretation strong { color: var(--text-primary); }
+
+    /* --- Playback progress --- */
+    .playback-bar {
+      width: 100%;
+      height: 4px;
+      background: var(--bg-secondary);
+      border-radius: 2px;
+      margin-top: 16px;
+      overflow: hidden;
+    }
+    .playback-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple));
+      border-radius: 2px;
+      width: 0%;
+      transition: width 0.1s linear;
+    }
+
+    /* --- Loading --- */
+    .loading {
+      display: none;
+      text-align: center;
+      padding: 40px;
+    }
+    .loading.active { display: block; }
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent-blue);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 16px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* --- Full width section --- */
+    .full-width { grid-column: 1 / -1; }
+
+    /* --- Scrollbar --- */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg-secondary); }
+    ::-webkit-scrollbar-thumb {
+      background: var(--text-muted);
+      border-radius: 3px;
+    }
+
+    /* --- Playing animation --- */
+    .playing-indicator {
+      display: none;
+      align-items: center;
+      gap: 3px;
+    }
+    .playing-indicator.active { display: flex; }
+    .playing-indicator span {
+      width: 3px;
+      background: var(--accent-green);
+      border-radius: 2px;
+      animation: audioWave 0.8s ease-in-out infinite;
+    }
+    .playing-indicator span:nth-child(1) { height: 10px; animation-delay: 0s; }
+    .playing-indicator span:nth-child(2) { height: 16px; animation-delay: 0.1s; }
+    .playing-indicator span:nth-child(3) { height: 8px; animation-delay: 0.2s; }
+    .playing-indicator span:nth-child(4) { height: 14px; animation-delay: 0.3s; }
+    .playing-indicator span:nth-child(5) { height: 6px; animation-delay: 0.4s; }
+    @keyframes audioWave {
+      0%, 100% { transform: scaleY(1); }
+      50% { transform: scaleY(0.3); }
+    }
+
+    /* --- Examples bar --- */
+    .examples-bar {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    /* --- Footer --- */
+    .footer {
+      text-align: center;
+      padding: 30px;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+    }
+    .footer a { color: var(--accent-blue); text-decoration: none; }
+  </style>
+</head>
+<body>
+
+  <!-- Animated Background -->
+  <div class="bg-animation">
+    <div class="orb"></div>
+    <div class="orb"></div>
+    <div class="orb"></div>
+  </div>
+
+  <div class="app-container">
+    <!-- Header -->
+    <header class="header">
+      <h1>CodeSonify</h1>
+      <p class="tagline">Transform your code into music — hear the rhythm of your logic</p>
+      <span class="badge">🎵 Agents League 2026 — Creative Apps Track</span>
+    </header>
+
+    <!-- Main Grid -->
+    <div class="main-grid">
+
+      <!-- Left: Code Input -->
+      <div class="card">
+        <div class="card-header">
+          <h2>📝 Code Input</h2>
+          <div class="playing-indicator" id="playingIndicator">
+            <span></span><span></span><span></span><span></span><span></span>
+          </div>
+        </div>
+        <div class="card-body">
+          <textarea class="code-editor" id="codeInput" placeholder="Paste your code here or select an example below...
+
+// Try something like:
+function hello(name) {
+  if (name) {
+    console.log('Hello, ' + name);
+  } else {
+    console.log('Hello, World!');
+  }
+}" spellcheck="false"></textarea>
+
+          <div class="examples-bar" id="examplesBar">
+            <!-- Populated by JS -->
+          </div>
+
+          <!-- Diff Mode: second code editor -->
+          <div id="diffModeContainer" style="display:none; margin-top:12px;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+              <span style="font-size:0.85rem;color:var(--accent-cyan);">📝 Paste the NEW version of the code below:</span>
+              <button class="btn-example" onclick="toggleDiffMode()">✕ Close Diff Mode</button>
+            </div>
+            <textarea class="code-editor" id="diffInput" placeholder="Paste the NEW version of the code here...
+The code above becomes the OLD version, and this becomes the NEW version.
+CodeSonify will create music from the differences!" spellcheck="false" style="min-height:200px;border-color:var(--accent-cyan);"></textarea>
+          </div>
+
+          <div class="controls">
+            <select class="select-styled" id="styleSelect">
+              <option value="classical">🎻 Classical</option>
+              <option value="electronic">🎹 Electronic</option>
+              <option value="ambient">🌊 Ambient</option>
+              <option value="jazz">🎷 Jazz</option>
+              <option value="rock">🎸 Rock</option>
+            </select>
+            <button class="btn btn-primary" id="sonifyBtn" onclick="handleSonify()">
+              🎵 Sonify Code
+            </button>
+            <button class="btn btn-stop" id="stopBtn" onclick="handleStop()" style="display:none;">
+              ⏹ Stop
+            </button>
+            <button class="btn btn-secondary" id="midiBtn" onclick="handleExportMidi()" style="display:none;">
+              🎹 Export MIDI
+            </button>
+            <button class="btn btn-secondary" id="diffBtn" onclick="toggleDiffMode()">
+              🔄 Diff Mode
+            </button>
+          </div>
+          
+          <div class="playback-bar" id="playbackBar" style="display:none;">
+            <div class="playback-bar-fill" id="playbackFill"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Visualizer + Stats -->
+      <div class="card">
+        <div class="card-header">
+          <h2>🎨 Visualization</h2>
+          <span id="compositionTitle" style="font-size:0.8rem;color:var(--text-muted);"></span>
+        </div>
+        <div class="card-body">
+          <div class="visualizer-container">
+            <canvas id="visualizer"></canvas>
+          </div>
+
+          <div class="stats-grid" id="statsGrid">
+            <div class="stat-card">
+              <div class="stat-value" id="statTempo">—</div>
+              <div class="stat-label">BPM</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="statKey">—</div>
+              <div class="stat-label">Key</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="statComplexity">—</div>
+              <div class="stat-label">Complexity</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="statNotes">—</div>
+              <div class="stat-label">Notes</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="statDuration">—</div>
+              <div class="stat-label">Duration</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="statTracks">—</div>
+              <div class="stat-label">Tracks</div>
+            </div>
+          </div>
+
+          <!-- Tracks list -->
+          <div class="tracks-list" id="tracksList"></div>
+        </div>
+      </div>
+
+      <!-- Full width: Code Analysis + Interpretation -->
+      <div class="card full-width" id="analysisCard" style="display:none;">
+        <div class="card-header">
+          <h2>🧠 Analysis & Interpretation</h2>
+        </div>
+        <div class="card-body">
+          <div class="interpretation" id="interpretation"></div>
+          <div class="code-highlight" id="codeHighlight"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loading -->
+    <div class="loading" id="loading">
+      <div class="spinner"></div>
+      <p>Analyzing code and composing music...</p>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <p>Built with 💜 using GitHub Copilot for <a href="https://github.com/microsoft/agentsleague" target="_blank">Agents League 2026</a></p>
+      <p style="margin-top:4px;">CodeSonify — Where every line of code has a melody</p>
+    </div>
+  </div>
+
+  <!-- ============================================
+       JavaScript: Audio Engine + UI Logic
+       ============================================ -->
+  <script>
+    // --- State ---
+    let currentComposition = null;
+    let currentAnalysis = null;
+    let isPlaying = false;
+    let scheduledEvents = [];
+    let animationFrameId = null;
+    let synths = {};
+    let toneStarted = false;
+
+    // --- Load Examples on Start ---
+    async function loadExamples() {
+      try {
+        const res = await fetch('/api/examples');
+        const data = await res.json();
+        const bar = document.getElementById('examplesBar');
+        data.examples.forEach((ex, i) => {
+          const btn = document.createElement('button');
+          btn.className = 'btn-example';
+          btn.textContent = ex.name;
+          btn.onclick = () => {
+            document.getElementById('codeInput').value = ex.code;
+          };
+          bar.appendChild(btn);
+        });
+      } catch (e) {
+        console.warn('Could not load examples:', e);
+      }
+    }
+    loadExamples();
+
+    // --- Main Sonify Handler ---
+    async function handleSonify() {
+      const code = document.getElementById('codeInput').value.trim();
+      if (!code) {
+        alert('Please paste some code first!');
+        return;
+      }
+
+      const style = document.getElementById('styleSelect').value;
+      const btn = document.getElementById('sonifyBtn');
+      btn.disabled = true;
+
+      // Show loading
+      document.getElementById('loading').classList.add('active');
+
+      try {
+        const res = await fetch('/api/sonify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code, style }),
+        });
+
+        if (!res.ok) throw new Error('Server error');
+
+        const data = await res.json();
+        currentComposition = data.composition;
+        currentAnalysis = data.analysis;
+
+        // Update UI
+        updateStats(data.composition, data.analysis);
+        updateTracks(data.composition.tracks);
+        updateAnalysis(data.analysis, data.composition);
+        renderCodeHighlight(data.analysis);
+
+        document.getElementById('analysisCard').style.display = 'block';
+
+        // Show MIDI export button
+        document.getElementById('midiBtn').style.display = 'flex';
+
+        // Play the music!
+        await playComposition(data.composition);
+
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Error sonifying code. Make sure the server is running.');
+      } finally {
+        document.getElementById('loading').classList.remove('active');
+        btn.disabled = false;
+      }
+    }
+
+    // --- Update Stats UI ---
+    function updateStats(comp, analysis) {
+      document.getElementById('statTempo').textContent = comp.tempo;
+      document.getElementById('statKey').textContent = `${comp.key} ${comp.scale}`;
+      document.getElementById('statComplexity').textContent = `${analysis.metrics.complexity}/100`;
+      
+      const totalNotes = comp.tracks.reduce((sum, t) => sum + t.notes.length, 0);
+      document.getElementById('statNotes').textContent = totalNotes;
+      document.getElementById('statDuration').textContent = `${comp.duration.toFixed(1)}s`;
+      document.getElementById('statTracks').textContent = comp.tracks.length;
+      document.getElementById('compositionTitle').textContent = comp.title;
+    }
+
+    // --- Update Tracks UI ---
+    function updateTracks(tracks) {
+      const container = document.getElementById('tracksList');
+      const maxNotes = Math.max(...tracks.map(t => t.notes.length), 1);
+      
+      const colors = {
+        melody: 'var(--accent-blue)',
+        bass: 'var(--accent-purple)',
+        harmony: 'var(--accent-green)',
+        percussion: 'var(--accent-orange)',
+        ambient: 'var(--accent-cyan)',
+        dissonance: 'var(--accent-red)',
+      };
+
+      container.innerHTML = tracks.map(track => `
+        <div class="track-item">
+          <span class="track-name">${track.name}</span>
+          <span class="track-notes">${track.notes.length} notes</span>
+          <div class="track-bar">
+            <div class="track-bar-fill" style="width:${(track.notes.length/maxNotes)*100}%;background:${colors[track.instrument] || 'var(--accent-blue)'}"></div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // --- Update Analysis UI ---
+    function updateAnalysis(analysis, composition) {
+      document.getElementById('interpretation').innerHTML = `
+        <strong>🎼 Musical Interpretation:</strong> ${composition.metadata.musicalInterpretation}
+        <br><br>
+        <strong>📊 Code Profile:</strong>
+        ${analysis.language.toUpperCase()} • ${analysis.metrics.totalLines} lines •
+        ${analysis.metrics.functionCount} functions •
+        ${analysis.metrics.loopCount} loops •
+        ${analysis.metrics.conditionalCount} conditionals •
+        Nesting depth: ${analysis.metrics.maxNestingDepth}
+      `;
+    }
+
+    // --- Render Syntax-Highlighted Code ---
+    function renderCodeHighlight(analysis) {
+      const container = document.getElementById('codeHighlight');
+      const code = document.getElementById('codeInput').value;
+      const lines = code.split('\n');
+
+      // Create a token lookup by line
+      const tokensByLine = {};
+      for (const token of analysis.tokens) {
+        if (!tokensByLine[token.line]) tokensByLine[token.line] = [];
+        tokensByLine[token.line].push(token);
+      }
+
+      let html = '';
+      for (let i = 0; i < lines.length; i++) {
+        const lineNum = i + 1;
+        const tokens = tokensByLine[lineNum] || [];
+        let lineHtml = escapeHtml(lines[i]);
+
+        // Highlight the dominant token type for this line
+        if (tokens.length > 0) {
+          const dominantType = tokens.find(t => t.type !== 'whitespace' && t.type !== 'unknown')?.type || 'unknown';
+          lineHtml = `<span class="token-${dominantType}">${lineHtml}</span>`;
+        }
+
+        html += `<div class="code-line"><span class="line-num">${lineNum}</span><span>${lineHtml}</span></div>`;
+      }
+
+      container.innerHTML = html;
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    // --- Audio Playback with Tone.js ---
+    async function playComposition(composition) {
+      // Ensure Tone.js is started (requires user interaction)
+      if (!toneStarted) {
+        await Tone.start();
+        toneStarted = true;
+      }
+
+      // Stop any current playback
+      handleStop();
+      isPlaying = true;
+
+      document.getElementById('stopBtn').style.display = 'flex';
+      document.getElementById('playingIndicator').classList.add('active');
+      document.getElementById('playbackBar').style.display = 'block';
+
+      // Create synths for each instrument type
+      const waveformMap = {
+        melody: 'triangle',
+        bass: 'sine',
+        harmony: 'sine',
+        percussion: 'square',
+        ambient: 'sine',
+        dissonance: 'sawtooth',
+      };
+
+      const volumeMap = {
+        melody: -6,
+        bass: -10,
+        harmony: -12,
+        percussion: -8,
+        ambient: -18,
+        dissonance: -4,
+      };
+
+      // Create synths with reverb
+      const reverb = new Tone.Reverb({ decay: 3, wet: 0.3 }).toDestination();
+      
+      synths = {};
+      for (const track of composition.tracks) {
+        const synth = new Tone.PolySynth(Tone.Synth, {
+          oscillator: { type: waveformMap[track.instrument] || 'sine' },
+          envelope: {
+            attack: track.instrument === 'ambient' ? 0.3 : 0.05,
+            decay: 0.2,
+            sustain: track.instrument === 'bass' ? 0.8 : 0.3,
+            release: track.instrument === 'ambient' ? 2 : 0.5,
+          },
+          volume: volumeMap[track.instrument] || -10,
+        }).connect(reverb);
+
+        synths[track.instrument] = synth;
+      }
+
+      // Schedule all notes
+      const now = Tone.now() + 0.1;
+      const totalDuration = composition.duration || 10;
+
+      for (const track of composition.tracks) {
+        const synth = synths[track.instrument];
+        if (!synth) continue;
+
+        for (const note of track.notes) {
+          const durationMap = {
+            '16n': 0.1, '8n': 0.2, '8n.': 0.3, '4n': 0.4,
+            '4n.': 0.6, '2n': 0.8, '2n.': 1.2, '1n': 1.6,
+          };
+          const dur = durationMap[note.duration] || 0.3;
+
+          try {
+            synth.triggerAttackRelease(
+              note.note,
+              dur,
+              now + note.time,
+              note.velocity * 0.6
+            );
+          } catch (e) {
+            // Skip invalid notes silently
+          }
+        }
+      }
+
+      // Start visualization
+      startVisualization(composition);
+
+      // Update playback progress
+      const startTime = Date.now();
+      const updateProgress = () => {
+        if (!isPlaying) return;
+        const elapsed = (Date.now() - startTime) / 1000;
+        const progress = Math.min((elapsed / totalDuration) * 100, 100);
+        document.getElementById('playbackFill').style.width = `${progress}%`;
+        
+        if (progress >= 100) {
+          setTimeout(() => handleStop(), 500);
+          return;
+        }
+        requestAnimationFrame(updateProgress);
+      };
+      updateProgress();
+    }
+
+    // --- Stop Playback ---
+    function handleStop() {
+      isPlaying = false;
+      
+      // Dispose all synths
+      for (const key of Object.keys(synths)) {
+        try {
+          synths[key].releaseAll();
+          synths[key].dispose();
+        } catch (e) {}
+      }
+      synths = {};
+
+      document.getElementById('stopBtn').style.display = 'none';
+      document.getElementById('playingIndicator').classList.remove('active');
+      document.getElementById('playbackFill').style.width = '0%';
+
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+      }
+    }
+
+    // --- Canvas Visualization ---
+    function startVisualization(composition) {
+      const canvas = document.getElementById('visualizer');
+      const ctx = canvas.getContext('2d');
+      
+      // Set canvas size
+      canvas.width = canvas.offsetWidth * 2;
+      canvas.height = canvas.offsetHeight * 2;
+      ctx.scale(2, 2);
+
+      const width = canvas.offsetWidth;
+      const height = canvas.offsetHeight;
+
+      // Pre-calculate visualization data
+      const allNotes = composition.tracks.flatMap(t => t.notes);
+      const totalDuration = composition.duration || 10;
+      const startTime = Date.now();
+
+      const colors = {
+        melody: '#3b82f6',
+        bass: '#8b5cf6',
+        harmony: '#10b981',
+        percussion: '#f59e0b',
+        ambient: '#06b6d4',
+        dissonance: '#ef4444',
+      };
+
+      function draw() {
+        if (!isPlaying) return;
+
+        const elapsed = (Date.now() - startTime) / 1000;
+        const progress = elapsed / totalDuration;
+
+        // Clear with fade effect
+        ctx.fillStyle = 'rgba(10, 14, 26, 0.15)';
+        ctx.fillRect(0, 0, width, height);
+
+        // Draw center line
+        ctx.strokeStyle = 'rgba(99, 102, 241, 0.15)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(0, height / 2);
+        ctx.lineTo(width, height / 2);
+        ctx.stroke();
+
+        // Draw notes as particles/bars
+        for (const note of allNotes) {
+          const noteProgress = note.time / totalDuration;
+          const relativePos = noteProgress - progress;
+
+          // Only show notes within visible range
+          if (relativePos < -0.05 || relativePos > 0.5) continue;
+
+          const x = width * 0.1 + (relativePos / 0.5) * width * 0.8;
+          
+          // Parse note frequency for y position
+          const noteMatch = note.note.match(/([A-G]#?)(\d+)/);
+          if (!noteMatch) continue;
+          const octave = parseInt(noteMatch[2]);
+          const y = height - ((octave - 1) / 7) * height;
+
+          const color = colors[note.instrument] || '#ffffff';
+          const isActive = Math.abs(relativePos) < 0.01;
+          const size = isActive ? 8 : 3 + note.velocity * 4;
+          const alpha = isActive ? 1 : 0.4 + note.velocity * 0.4;
+
+          // Draw note particle
+          ctx.beginPath();
+          ctx.arc(x, y, size, 0, Math.PI * 2);
+          ctx.fillStyle = color + Math.round(alpha * 255).toString(16).padStart(2, '0');
+          ctx.fill();
+
+          // Draw glow for active notes
+          if (isActive) {
+            ctx.beginPath();
+            ctx.arc(x, y, size * 3, 0, Math.PI * 2);
+            ctx.fillStyle = color + '22';
+            ctx.fill();
+          }
+        }
+
+        // Draw playhead
+        const playheadX = width * 0.1;
+        ctx.strokeStyle = '#ffffff44';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(playheadX, 0);
+        ctx.lineTo(playheadX, height);
+        ctx.stroke();
+
+        // Draw time marker
+        ctx.fillStyle = '#ffffff88';
+        ctx.font = '10px system-ui';
+        ctx.fillText(`${elapsed.toFixed(1)}s / ${totalDuration.toFixed(1)}s`, 10, height - 8);
+
+        animationFrameId = requestAnimationFrame(draw);
+      }
+
+      draw();
+    }
+
+    // --- MIDI Export Handler ---
+    async function handleExportMidi() {
+      const code = document.getElementById('codeInput').value.trim();
+      if (!code) return;
+
+      const style = document.getElementById('styleSelect').value;
+
+      try {
+        const res = await fetch('/api/export-midi', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code, style }),
+        });
+
+        if (!res.ok) throw new Error('Export failed');
+
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'codesonify.mid';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        console.error('MIDI export error:', err);
+        alert('Error exporting MIDI. Make sure you sonify first.');
+      }
+    }
+
+    // --- Diff Mode ---
+    let diffModeActive = false;
+
+    function toggleDiffMode() {
+      diffModeActive = !diffModeActive;
+      const container = document.getElementById('diffModeContainer');
+      const diffBtn = document.getElementById('diffBtn');
+      container.style.display = diffModeActive ? 'block' : 'none';
+      diffBtn.style.background = diffModeActive ? 'rgba(6, 182, 212, 0.2)' : '';
+      diffBtn.style.borderColor = diffModeActive ? 'var(--accent-cyan)' : '';
+    }
+
+    // Override sonify to handle diff mode
+    const originalHandleSonify = handleSonify;
+    handleSonify = async function() {
+      if (diffModeActive) {
+        const oldCode = document.getElementById('codeInput').value.trim();
+        const newCode = document.getElementById('diffInput').value.trim();
+
+        if (!oldCode || !newCode) {
+          alert('In Diff Mode, paste the OLD code above and the NEW code below.');
+          return;
+        }
+
+        const style = document.getElementById('styleSelect').value;
+        const btn = document.getElementById('sonifyBtn');
+        btn.disabled = true;
+        document.getElementById('loading').classList.add('active');
+
+        try {
+          const res = await fetch('/api/sonify-diff', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ old_code: oldCode, new_code: newCode, style }),
+          });
+
+          if (!res.ok) throw new Error('Server error');
+          const data = await res.json();
+
+          currentComposition = data.composition;
+          updateStats(data.composition, { metrics: { complexity: data.composition.metadata.complexity } });
+          updateTracks(data.composition.tracks);
+
+          document.getElementById('analysisCard').style.display = 'block';
+          document.getElementById('interpretation').innerHTML = `
+            <strong>🔄 Diff Sonification:</strong> ${data.composition.metadata.musicalInterpretation}
+            <br><br>
+            <strong>📊 Changes:</strong>
+            +${data.diffAnalysis.addedLines} lines added /
+            -${data.diffAnalysis.removedLines} lines removed
+            (${(data.diffAnalysis.changeRatio * 100).toFixed(0)}% additions)
+          `;
+          document.getElementById('codeHighlight').innerHTML =
+            '<p style="color:var(--text-muted);text-align:center;padding:20px;">🔺 Ascending melodies = added code &nbsp; | &nbsp; 🔻 Descending bass = removed code</p>';
+
+          await playComposition(data.composition);
+        } catch (error) {
+          console.error('Error:', error);
+          alert('Error sonifying diff. Make sure the server is running.');
+        } finally {
+          document.getElementById('loading').classList.remove('active');
+          btn.disabled = false;
+        }
+      } else {
+        await originalHandleSonify();
+      }
+    };
+
+    // --- Initialize default visualization ---
+    function drawIdleVisualization() {
+      const canvas = document.getElementById('visualizer');
+      const ctx = canvas.getContext('2d');
+      canvas.width = canvas.offsetWidth * 2;
+      canvas.height = canvas.offsetHeight * 2;
+      ctx.scale(2, 2);
+      const w = canvas.offsetWidth;
+      const h = canvas.offsetHeight;
+
+      ctx.fillStyle = 'var(--bg-code)';
+      ctx.fillRect(0, 0, w, h);
+
+      // Draw idle wave
+      ctx.strokeStyle = 'rgba(99, 102, 241, 0.3)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      for (let x = 0; x < w; x++) {
+        const y = h / 2 + Math.sin(x * 0.03) * 20 + Math.sin(x * 0.01) * 10;
+        x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+
+      // Draw text
+      ctx.fillStyle = 'rgba(148, 163, 184, 0.5)';
+      ctx.font = '14px system-ui';
+      ctx.textAlign = 'center';
+      ctx.fillText('Paste code and click "Sonify Code" to see the magic ✨', w / 2, h / 2 + 50);
+    }
+    
+    // Init
+    window.addEventListener('load', drawIdleVisualization);
+    window.addEventListener('resize', () => {
+      if (!isPlaying) drawIdleVisualization();
+    });
+  </script>
+</body>
+</html>
