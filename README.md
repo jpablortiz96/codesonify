@@ -12,7 +12,7 @@
 
 ## 🎬 Demo
 
-> 📹 *[Watch the demo video →](YOUR_VIDEO_LINK_HERE)*
+> 📹 *[Watch the demo video →](https://youtu.be/yW3g-tQjNZo)*
 
 **Try it yourself:** Clone the repo, run `npm start`, and open http://localhost:3000
 
